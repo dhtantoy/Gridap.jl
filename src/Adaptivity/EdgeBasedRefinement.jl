@@ -54,6 +54,7 @@ function refine(method::EdgeBasedRefinement,model::UnstructuredDiscreteModel{Dc,
   ctopo = get_grid_topology(model)
   coarse_labels = get_face_labeling(model)
   # Create new model
+  #? faces_list: the new nodes lying on the original faces, which are used to compute new ref_grid in Refinement Rule or to construct new topology
   rrules, faces_list = setup_edge_based_rrules(method, model.grid_topology,cells_to_refine)
   topo   = refine_edge_based_topology(ctopo,rrules,faces_list)
   reffes = map(p->LagrangianRefFE(Float64,p,1),get_polytopes(topo))

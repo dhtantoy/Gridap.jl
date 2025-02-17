@@ -4,10 +4,10 @@ struct RefinementGlue <: AdaptivityGlueType end
 struct MixedGlue <: AdaptivityGlueType end
 
 """
-Glue containing the map between two nested triangulations. The contained datastructures will 
+Glue containing the map between two nested triangulations. The contained data structures will 
 depend on the type of glue. There are two types of `AdaptivityGlue`: 
 
-- `RefinementGlue` :: All cells in the new mesh are children of cells in the old mesh. I.e given 
+- `RefinementGlue` :: All cells in the new mesh are children of cells in the old mesh, i.e given 
   a new cell, it is possible to find a single old cell containing it (the new cell might be exactly
   the old cell if no refinement).
 - `MixedGlue` :: Some cells in the new mesh are children of cells in the old mesh, while others are
