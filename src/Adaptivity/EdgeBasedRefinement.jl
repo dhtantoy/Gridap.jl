@@ -1,3 +1,6 @@
+#? gid: global id
+#? r<...>: refinement <...>
+#? c<...>: coarse <...>
 """
 Note on RefinementRules and Orientation of the refined grids:
 
