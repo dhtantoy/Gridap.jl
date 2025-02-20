@@ -1,11 +1,11 @@
 
 """
-Constant to be used in order to indicate a hex-like extrusion axis.
+Constant to be used in order to indicate a hex-like（六面体） extrusion axis.
 """
 const HEX_AXIS = 1
 
 """
-Constant to be used in order to indicate a tet-like extrusion axis.
+Constant to be used in order to indicate a tet-like（四面体） extrusion axis.
 """
 const TET_AXIS = 2
 

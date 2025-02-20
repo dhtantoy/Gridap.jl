@@ -1,6 +1,8 @@
 #? gid: global id
 #? r<...>: refinement <...>
 #? c<...>: coarse <...>
+#? 这里保持升序的gid可以保证相邻的单元在公共边上具有相同的正定向，因此这里的 Orientation是指边的定向而非cell的定向。
+#? 在Gridap中，每个三角形的顶点组成边的规则是一定的，具体是：如果三个顶点编号为 a < b < c,那么三条边的编号分别为 (a,b), (a,c), (b,c). 固定这个规则之后，很多事情都变得简单（有趣）
 """
 Note on RefinementRules and Orientation of the refined grids:
 
@@ -156,24 +158,39 @@ function get_refined_cell_to_vertex_map(
   faces_list::Tuple
 ) where Dc
   @check length(faces_list) == Dc+1
+  #? d_*: dimension of *
+  #? *_to_*: mapping, e.g. d_to_nface denotes that d_to_nface[d] return the number of faces of dimension d. 
+  #? *_to_*_to_*: mapping that returns a mapping.
   d_to_nfaces = map(Df -> num_faces(topo,Df), 0:Dc)
   d_to_cell_to_dface = map(Df -> get_faces(topo,Dc,Df), 0:Dc-1)
 
-  # Offsets for new vertices
+  # Offsets on each faces of coarse mesh for new vertices
   d_to_offset = [1,map(length,faces_list)...]
   length_to_ptrs!(d_to_offset)
   d_to_offset = d_to_offset[1:end-1]
 
   # Maps from refined faces (i.e new vertices) to old faces
   d_to_faces_reindexing = map(d_to_nfaces,d_to_offset,faces_list) do nfaces,offset,ref_faces
+    # `find_inverse_index_map` return indices vector `I` such that `ref_faces[I] == 1:nfaces`
+    # 0 denote UNUSED.
+    # 这一步是考虑到nfaces和ref_faces长度不一，比如TRI的RedRefinementRule中, 2d faces中是没有新点的，也就是说ref_faces是空的，但是nfaces不是空的。
     faces_reindexing = find_inverse_index_map(ref_faces,nfaces)
+
+    # 合并各维度faces的id组成gids，需要考虑到各维度的offset
     return map(f -> iszero(f) ? 0 : f + offset - 1, faces_reindexing)
   end
 
   # For a given parent cell, return the new node gids (corresponding to the refined faces)
+  # 粗网格每个单元有global edge id, 上面已经计算了粗网格上每个edge id 对应的细网格点global id, 因此就可以返回粗网格上每个单元上所有的细网格点的global id.
   function cell_to_reindexed_faces(::Val{2},cell)
+    #? N(for node) 还是原来的id
     N = view(d_to_cell_to_dface[1],cell)
+
+    #? E(for edge) 上的新点，需要通过reindexing得到nid
+    # `view(d_to_cell_to_dface[2],cell)` 返回的是cell的edge的id
     E = view(d_to_faces_reindexing[2],view(d_to_cell_to_dface[2],cell))
+
+    #? C(for cell) 上的新点，下面的写法默认每个cell上只会有一个点
     C = [d_to_faces_reindexing[3][cell]]
     return (N,E,C)
   end
@@ -186,18 +203,26 @@ function get_refined_cell_to_vertex_map(
   end
 
   # Allocate ptr and data arrays for new connectivity
+  #? nC_new: number of new cells
   nC_new    = sum(rr -> num_subcells(rr), rrules)
+  # 每个cell上的nodes数求和，包括重复nodes.
   nData_new = sum(rr -> sum(length,rr.ref_grid.grid.cell_node_ids), rrules)
   ptrs_new  = Vector{Int}(undef,nC_new+1)
   data_new  = Vector{Int}(undef,nData_new)
 
+  # Table 初始化
   k = 1
   ptrs_new[1] = 1
+
+  # 遍历每个单元
   for iC = 1:d_to_nfaces[Dc+1]
+
+    # 每个单元的refinement rule
     rr = rrules[iC]
 
     # New vertex ids from old face ids
     faces = cell_to_reindexed_faces(Val(Dc),iC)
+    # 每个单元的网格细化之后的connectivity的node ids是局部的，这里传入 faces, 返回的connectivity是global node ids.
     sub_conn = get_relabeled_connectivity(rr,faces)
 
     nChild = length(sub_conn)
